@@ -1,135 +1,83 @@
-# サイドカーによって Cloud Run の 32 MiB 上限を突破できるか検証してみる
-
 # 概要
 
-Cloud Run のサイドカー 2023/5/16 に Public Preview となりました。Google Cloud Blog では、サイドカーを使った Nasdaq の事例が紹介されています。
+Cloud Run のサイドカーが 2023/5/16 に Public Preview となりました 🎉
+Google Cloud Blog では、サイドカーを使った Nasdaq の事例が紹介されています。
 
-[Cloud Run sidecars enable advanced multi-container patterns | Google Cloud Blog](https://cloud.google.com/blog/products/serverless/cloud-run-now-supports-multi-container-deployments?hl=en)
+https://cloud.google.com/blog/products/serverless/cloud-run-now-supports-multi-container-deployments?hl=en
 
-Nasdaq の事例を Nginx と Node.js によって実際に解決できるのか検証してみます。
+Nasdaq の事例では Envoy を使っています。それを Nginx と Node.js によって実際に解決できるのか検証してみます。
+最終的な構成は以下のとおりです。
+![](https://storage.googleapis.com/zenn-user-upload/92582b774cf7-20230916.png)
+_構成図_
 
 # 検証に使うアプリケーション
 
-検証には使う Node.js, Express を使ったアプリケーションは作成します。
+検証には Node.js, Express を使ったアプリケーションを作成します。
 コードは以下のとおりです。
 
-```ts
-import express from 'express';
-import Multer from 'multer';
-import { Storage } from '@google-cloud/storage';
-import dotenv from 'dotenv';
-import { setTimeout } from 'timers/promises';
-dotenv.config();
-const app = express();
-const multer = Multer({ storage: Multer.memoryStorage() });
-
-const storage = new Storage();
-const bucket = storage.bucket(
-  process.env.GCLOUD_STORAGE_BUCKET || 'upload-file-2023-09-03'
-);
-app.post('/upload', multer.single('file'), (req, res, next) => {
-  const file = req.file;
-  if (!file) {
-    res.status(400).send('No file uploaded.');
-    return;
-  }
-  const blob = bucket.file(file.originalname);
-  const blobStream = blob.createWriteStream({
-    resumable: false,
-  });
-  blobStream.on('error', (err) => {
-    next(err);
-  });
-  blobStream.on('finish', () => {
-    const publicUrl = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
-    const msg = `File uploaded! ${publicUrl}`;
-    console.log(msg);
-    res.status(200).send(msg);
-  });
-  blobStream.end(file.buffer);
-});
-
-app.get('/sleep', async (req, res) => {
-  console.log('Start sleep');
-  await setTimeout(61000);
-  res.send('END sleep');
-});
-
-app.get('/health', (req, res) => {
-  console.log('health check');
-  res.send('OK');
-});
-
-process.once('SIGTERM', async () => {
-  console.log('SIGTERM received.');
-  process.exit();
-});
-
-process.once('SIGINT', async () => {
-  console.log('SIGINT received.');
-  process.exit();
-});
-const port = parseInt(process.env.PORT || '8080');
-app.listen(port, () => {
-  console.log(`erver listening on port ${port}`);
-});
-```
-
 - `GET /health` はヘルスチェック用のエンドポイントです。
-- `GET /sleep` は時間のかかる処理を想定したエンドポイントです。
 - `POST /upload` は、ファイルアップロード用のエンドポイントです。アップロードされたファイルは、Cloud Storage へ保存されるよう構成しています。
+- `GET /sleep` は時間のかかる処理を想定したエンドポイントです。
+
+https://github.com/sikeda107/tech-blog/blob/main/CloudRunSideCar/src/index.ts
 
 # 32MiB の上限を確認してみる
-
-## 通常デプロイする
-
-アプリケーションをまずは通常の Cloud Run としてデプロイしてみます。
-[gcloud run deploy | Google Cloud CLI Documentation](https://cloud.google.com/sdk/gcloud/reference/run/deploy)
-
-- 対象プロジェクト ID: http2-cloudrun-test
-- Cloud Run サービス名: http1-test
-- リージョン: asia-northeast1
-
-```bash
-$ gcloud run deploy http1-test --source . \
-  --project http2-cloudrun-test \
-  --region asia-northeast1 \
-  --allow-unauthenticated
-```
-
-デプロイできたか確認してみます。ネットワークは HTTP/2 が「無効」になっていますね。
-ヘルスチェックが通るか確認します。
-
-```bash
-$ curl -XGET https://http1-test-nkpico2u7a-an.a.run.app/health
-OK
-```
-
-問題なさそうです。
 
 ## Cloud Storage を作成する
 
 ファイルのアップロード先となる 公開 Cloud Storage バケットを作成します。
 
 ```bash
-$ BUCKET_NAME=upload-file-2023-09-03
-$ gcloud storage buckets create gs://$BUCKET_NAME --location=asia-northeast1 --uniform-bucket-level-access
-$ gcloud storage buckets add-iam-policy-binding gs://$BUCKET_NAME --member=allUsers --role=roles/storage.objectViewer
+BUCKET_NAME=upload-file-2023-09-03
+gcloud storage buckets create gs://$BUCKET_NAME \
+  --location=asia-northeast1 \
+  --uniform-bucket-level-access
+gcloud storage buckets add-iam-policy-binding gs://$BUCKET_NAME \
+  --member=allUsers \
+  --role=roles/storage.objectViewer
+```
+
+## 通常デプロイする
+
+アプリケーションをまずは通常の Cloud Run としてデプロイしてみます。
+[gcloud run deploy | Google Cloud CLI Documentation](https://cloud.google.com/sdk/gcloud/reference/run/deploy)
+:::message
+**Dockerfile** なしでソースコードからデプロイできます。
+[ソースコードからのデプロイ Cloud Run のドキュメント Google Cloud](https://cloud.google.com/run/docs/deploying-source-code?hl=ja)
+:::
+
+```bash
+# デプロイ
+gcloud run deploy http1-test --source . \
+  --project http2-cloudrun-test \
+  --region asia-northeast1 \
+  --allow-unauthenticated
+```
+
+デプロイできたか確認してみます。ネットワークは HTTP/2 が「**無効**」になっていますね。
+
+![](https://storage.googleapis.com/zenn-user-upload/6d6bef26739b-20230916.png =350x)
+
+ヘルスチェックが通るか確認します。問題なさそうです。
+
+```bash
+$ curl -XGET https://http1-test-xxxxxxxx.run.app/health
+OK
 ```
 
 ## 画像のアップロードを検証する
 
-いよいよ 32MiB 上限を検証します。軽い画像と思い画像をアップロードしてみます。
+いよいよ 32MiB 上限を検証します。軽い画像(10MB)と重い画像(100MB)をアップロードしてみますが、重い画像は失敗してしまいます。
 
 ```bash
 # 軽い画像
-curl --location 'https://http1-test-nkpico2u7a-an.a.run.app/upload' \
---form 'file=@"./10MB.png"'
+curl --location 'https://http1-test-xxxxxxxx.run.app/upload' \
+--form 'file=@"./image/10MB.png"'
 File uploaded! https://storage.googleapis.com/upload-file-2023-09-03/10MB.png%
 
 # 重い画像
-curl --location 'https://http1-test-nkpico2u7a-an.a.run.app/upload' \
---form 'file=@"./100MB.png"'
+curl --location 'https://http1-test-xxxxxxxx.run.app/upload' \
+--form 'file=@"./image/100MB.png"'
 
 <html><head>
 <meta http-equiv="content-type" content="text/html;charset=utf-8">
@@ -147,30 +95,26 @@ h&&setTimeout(function(){if(history.replaceState){var a=location.href;history.re
 </body></html>
 ```
 
-重い画像は失敗しました。想定通りですね。
-
 ## HTTP/2 で画像のアップロードを検証する
 
 アプリケーションの変更をせずに HTTP/2 にした場合はどうなるでしょうか。
 HTTP/2 リクエストを「有効化」してみます。
 
 ```bash
-$ gcloud run services update http1-test --use-http2 \
+gcloud run services update http1-test --use-http2 \
   --project http2-cloudrun-test \
   --region asia-northeast1
 ```
 
-ヘルスチェックが通るか確認します。想定通り失敗しますね。
+ヘルスチェックが通るか確認すると、失敗しますね。
 アプリケーションの改修なしでは、HTTP/2 リクエストは受け付けてもらえないことを確認できました。
 
 ```bash
-curl -XGET https://http1-test-nkpico2u7a-an.a.run.app/health
+curl -XGET https://http1-test-xxxxxxxx.run.app/health
 upstream connect error or disconnect/reset before headers. reset reason: protocol error%
 ```
 
 ## まとめ
-
-２つの問題を確認しました。
 
 - HTTP/1 の場合は 32MiB のリクエストサイズ上限があること
 - HTTP/1 を想定したアプリケーションをそのまま HTTP/2 では動かせないこと
@@ -179,7 +123,7 @@ upstream connect error or disconnect/reset before headers. reset reason: protoco
 
 では、いよいよ サイドカーを使って Node.js アプリケーションを構成してみます。
 今回は、プロキシサーバーとして Nginx を利用します。
-サイドカーを使用した Cloud Run サービスをデプロイするためには、YAML ファイルを作成する必要があります。あらたに以下を作成します。
+サイドカーを使用した Cloud Run サービスをデプロイするためには、YAML ファイルを作成する必要がありますので、以下の２つを作成します。
 
 - Nginx のビルド環境とコンテナイメージ
 - Cloud Run をデプロイするための YAML ファイル
@@ -203,18 +147,12 @@ server {
 
 次に、Nginx 用の Dockerfile を作成します。
 
-```yaml
-FROM nginx:1.25.1-alpine-slim
-EXPOSE 8080
-COPY conf.d/default.conf /etc/nginx/conf.d/default.conf
-```
-
-[サイドカーをデプロイする YAML 構成を追加する](https://cloud.google.com/run/docs/deploying?hl=ja#multicontainer-yaml)
+https://github.com/sikeda107/tech-blog/blob/main/CloudRunSideCar/nginx/Dockerfile
 
 Nginx 用のイメージを格納するため、Artifact Registry を作成します。
 
 ```bash
-$ gcloud artifacts repositories create my-repo \
+gcloud artifacts repositories create my-repo \
   --location=asia-northeast1 \
   --repository-format=docker
 ```
@@ -228,55 +166,40 @@ Nginx イメージは Cloud Build で Kaniko を使って、ビルドします�
 
 [Kaniko キャッシュの使用  |  Cloud Build のドキュメント  |  Google Cloud](https://cloud.google.com/build/docs/optimize-builds/kaniko-cache?hl=ja)
 
-```yaml
-steps:
-  - id: build-nginx-for-proxy
-    name: 'gcr.io/kaniko-project/executor:latest'
-    args:
-      - --dockerfile=nginx/Dockerfile
-      - --destination=${_REPOSITORY}/nginx-proxy:${_IMAGE_TAG}
-      - --context=dir://nginx
-      - --cache=true
-      - --cache-ttl=336h
-      - --snapshot-mode=redo
-      - --use-new-run
-substitutions:
-  _REPOSITORY: asia-northeast1-docker.pkg.dev/http2-cloudrun-test/my-repo
-  _IMAGE_TAG: latest
-options:
-  machineType: 'N1_HIGHCPU_32'
-timeout: 1200s
-```
+https://github.com/sikeda107/tech-blog/blob/main/CloudRunSideCar/cloudbuild.yaml
 
 Cloud Build を実行します。
 
 ```bash
-$ gcloud builds submit --project=http2-cloudrun-test --config ./cloudbuild.yaml
+gcloud builds submit --project=http2-cloudrun-test \
+  --config ./cloudbuild.yaml
 ```
 
 ## Cloud Run をデプロイするための YAML ファイルを構成する
 
 Nginx のイメージのビルドが終わったので、Cloud Run サービスの YAML ファイルを作成します。
-
-[Cloud Run YAML Reference  |  Cloud Run Documentation  |  Google Cloud](https://cloud.google.com/run/docs/reference/yaml/v1)
-
 デプロイ済みの Cloud Run から YAML ファイルを取得します。
+[gcloud run services describe    Google Cloud CLI Documentation](https://cloud.google.com/sdk/gcloud/reference/run/services/describe)
 
 ```bash
-$ gcloud run services describe http1-test \
+gcloud run services describe http1-test \
   --region=asia-northeast1 \
   --format=export > service.yaml
 ```
 
 取得したファイルから不要な値を削除し、サイドカーを構成します。
+[Cloud Run YAML Reference  |  Cloud Run Documentation  |  Google Cloud](https://cloud.google.com/run/docs/reference/yaml/v1)
 
-```yaml
+```diff yaml:service.yaml
 apiVersion: serving.knative.dev/v1
 kind: Service
 metadata:
   annotations:
     run.googleapis.com/ingress: all
-    run.googleapis.com/launch-stage: BETA
+-    run.googleapis.com/ingress-status: all
+-    run.googleapis.com/operation-id: 7664691a-4065-4014-9f49-cb0fafdfdda6
++    # プレビューなので BETA が必要です
++    run.googleapis.com/launch-stage: BETA
   labels:
     cloud.googleapis.com/location: asia-northeast1
   name: http2-test
@@ -285,20 +208,25 @@ spec:
     metadata:
       annotations:
         autoscaling.knative.dev/maxScale: '100'
-        # Node.js アプリケーションが起動してから Nginx が起動するようにします
-        run.googleapis.com/container-dependencies: '{"proxy":["application"]}'
+-        run.googleapis.com/client-name: gcloud
+-        run.googleapis.com/client-version: 446.0.1
++        # Node.js アプリケーションが起動してから Nginx が起動するようにします
++        run.googleapis.com/container-dependencies: '{"proxy":["application"]}'
       labels:
         run.googleapis.com/startupProbeType: Default
     spec:
       containerConcurrency: 80
       containers:
-        # 先程デプロイした Nginx イメージを指定します
-        - image: asia-northeast1-docker.pkg.dev/http2-cloudrun-test/my-repo/nginx-proxy:latest
-          name: proxy
-          ports:
-            # HTTP/2 を有効化します
-            - containerPort: 8080
-              name: h2c
+-        - image: asia-northeast1-docker.pkg.dev/http2-cloudrun-test/cloud-run-source-deploy/http1-test@sha256:cc4d761a82778c52f8295a2993f54c5
+731baf37769b75e76c76992c7e2edbc48
++        # 先程デプロイした Nginx イメージを指定します
++        - image: asia-northeast1-docker.pkg.dev/http2-cloudrun-test/my-repo/nginx-proxy:latest
++          name: proxy
+           ports:
+             - containerPort: 8080
++            # HTTP/2 を有効化します
+-              name: http1
++              name: h2c
           resources:
             limits:
               cpu: 1000m
@@ -309,31 +237,31 @@ spec:
             tcpSocket:
               port: 8080
             timeoutSeconds: 240
-        # はじめにデプロイしたアプリケーションのイメージを指定します
-        - image: asia-northeast1-docker.pkg.dev/http2-cloudrun-test/cloud-run-source-deploy/http1-test:latest
-          name: application
-          resources:
-            limits:
-              cpu: 2000m
-              memory: 2Gi
-          env:
-            # 8080 は Nginx で使うので Node.js は 15000 で起動するように環境変数を設定します
-            - name: PORT
-              value: '15000'
-          startupProbe:
-            failureThreshold: 1
-            periodSeconds: 240
-            tcpSocket:
-              port: 15000
-            timeoutSeconds: 240
-          livenessProbe:
-            failureThreshold: 3
-            httpGet:
-              path: /health
-              port: 15000
-            initialDelaySeconds: 60
-            periodSeconds: 10
-            timeoutSeconds: 10
++        # はじめにデプロイしたアプリケーションのイメージを指定します
++        - image: asia-northeast1-docker.pkg.dev/http2-cloudrun-test/cloud-run-source-deploy/http1-test:latest
++          name: application
++          resources:
++            limits:
++              cpu: 2000m
++              memory: 2Gi
++          env:
++            # 8080 は Nginx で使うので Node.js は 15000 で起動するように環境変数を設定します
++            - name: PORT
++              value: '15000'
++          startupProbe:
++            failureThreshold: 1
++            periodSeconds: 240
++            tcpSocket:
++              port: 15000
++            timeoutSeconds: 240
++          livenessProbe:
++            failureThreshold: 3
++            httpGet:
++              path: /health
++              port: 15000
++            initialDelaySeconds: 60
++            periodSeconds: 10
++            timeoutSeconds: 10
       serviceAccountName: サービスアカウントのメールアドレス
       timeoutSeconds: 300
   traffic:
@@ -345,21 +273,21 @@ spec:
 
 ```bash
 # デプロイ
-$ gcloud run services replace --region=asia-northeast1 service.yaml
+gcloud run services replace --region=asia-northeast1 service.yaml
 # 未認証の許可
-$ gcloud run services add-iam-policy-binding http2-test \
+gcloud run services add-iam-policy-binding http2-test \
   --region=asia-northeast1 \
   --member="allUsers" --role="roles/run.invoker"
 ```
 
-動作確認をしてみます。
+動作確認をしてみます。ヘルスチェックは通りましたが Nginx のエラーが返ってきました。
 
 ```bash
-curl -XGET https://http2-test-nkpico2u7a-an.a.run.app/health
+curl -XGET https://http2-test-xxxxxxxx.run.app/health
 OK
 
-curl --location 'https://http2-test-nkpico2u7a-an.a.run.app/upload' \
---form 'file=@"./10MB.png"'
+curl --location 'https://http2-test-xxxxxxxx.run.app/upload' \
+--form 'file=@"./image/10MB.png"'
 
 <html>
 <head><title>413 Request Entity Too Large</title></head>
@@ -370,16 +298,17 @@ curl --location 'https://http2-test-nkpico2u7a-an.a.run.app/upload' \
 </html>
 ```
 
-ヘルスチェックは通りましたが Nginx のエラーが返ってきました。
-
 ## 「413 Request Entity Too Large」 を解決する
 
-Cloud Run へのリクエストは通過しているようですが、Nginx でリクエストが止まってしまっているようです。
-`client_max_body_size` を Nginx の設定に追加します。
+Cloud Run へのリクエストは通過しているようですが、Nginx でリクエストが止まってしまっているようです。`client_max_body_size` を Nginx の設定に追加します。
 
+:::details client_max_body_size
 [Module ngx_http_core_module](http://nginx.org/en/docs/http/ngx_http_core_module.html#client_max_body_size)
+Default: client_max_body_size 1m;
+Sets the maximum allowed size of the client request body. If the size in a request exceeds the configured value, the 413 (Request Entity Too Large) error is returned to the client.
+:::
 
-```conf
+```conf:default.conf
 server {
     listen 8080;
     http2  on;
@@ -391,12 +320,10 @@ server {
 }
 ```
 
-もう一度、Nginx のイメージをビルドしましょう。ビルドが完了したら`service.yaml` の Nginx のイメージを更新し、Cloud Run サービスをデプロイします。
-
-もう一度、画像のアップロードを試します。
+もう一度、Nginx のイメージをビルドしましょう。ビルドが完了したら`service.yaml` の Nginx のイメージを更新し、Cloud Run サービスをデプロイします。もう一度、画像のアップロードを試します。
 
 ```bash
-curl --location 'https://http2-test-nkpico2u7a-an.a.run.app/upload' \
+curl --location 'https://http2-test-xxxxxxxx.run.app/upload' \
 --form 'file=@"./100MB.png"'
 File uploaded! https://storage.googleapis.com/upload-file-2023-09-03/100MB.png%
 ```
@@ -408,7 +335,7 @@ File uploaded! https://storage.googleapis.com/upload-file-2023-09-03/100MB.png%
 ところで、32MiB を超えたファイルをアップロードできましたが、別の問題がおきる可能性があります。たとえば、`GET /sleep` に対してリクエストしてみましょう。
 
 ```bash
-curl -XGET https://http2-test-nkpico2u7a-an.a.run.app/sleep
+curl -XGET https://http2-test-xxxxxxxx.run.app/sleep
 <html>
 <head><title>504 Gateway Time-out</title></head>
 <body>
@@ -420,29 +347,20 @@ curl -XGET https://http2-test-nkpico2u7a-an.a.run.app/sleep
 
 タイムアウトしてしまいました。「Nginx 504 Gateway Time-out」で検索するとたくさんの事例を見つけられると思います。
 今回は、`proxy_read_timeout` を設定します。
+:::details proxy_read_timeout
 [Module ngx_http_proxy_module](http://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_read_timeout)
+Default: proxy_read_timeout 60s;
+Defines a timeout for reading a response from the proxied server. The timeout is set only between two successive read operations, not for the transmission of the whole response. If the proxied server does not transmit anything within this time, the connection is closed.
+:::
 
-```conf
-server {
-    listen 8080;
-    http2  on;
-    server_name _;
-    location / {
-        client_max_body_size 1024M;
-        proxy_pass   http://localhost:15000;
-        proxy_read_timeout 3600;
-    }
-}
-```
+https://github.com/sikeda107/tech-blog/blob/main/CloudRunSideCar/nginx/conf.d/default.conf
 
-これはデフォルトで 60 秒の設定なので、それより大きな値にしましょう。
+これはデフォルトで 60 秒の設定なので、それより大きな値にしましょう。今度は正常にレスポンスを受け取れました。
 
 ```bash
-curl -XGET https://http2-test-nkpico2u7a-an.a.run.app/sleep
+curl -XGET https://http2-test-xxxxxxxx.run.app/sleep
 END sleep%
 ```
-
-今度は正常にレスポンスを受け取れました。
 
 # まとめ
 
