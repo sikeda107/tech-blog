@@ -1,0 +1,5 @@
+*
+# include directories and files
+!src/
+!package*.json
+!tsconfig.json

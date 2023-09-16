@@ -1,0 +1,43 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  annotations:
+    run.googleapis.com/ingress: all
+    run.googleapis.com/ingress-status: all
+    run.googleapis.com/operation-id: 7664691a-4065-4014-9f49-cb0fafdfdda6
+  labels:
+    cloud.googleapis.com/location: asia-northeast1
+  name: http1-test
+  namespace: '1027898580269'
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/maxScale: '100'
+        run.googleapis.com/client-name: gcloud
+        run.googleapis.com/client-version: 446.0.1
+      labels:
+        run.googleapis.com/startupProbeType: Default
+      name: http1-test-00001-nav
+    spec:
+      containerConcurrency: 80
+      containers:
+        - image: asia-northeast1-docker.pkg.dev/http2-cloudrun-test/cloud-run-source-deploy/http1-test@sha256:cc4d761a82778c52f8295a2993f54c5731baf37769b75e76c76992c7e2edbc48
+          ports:
+            - containerPort: 8080
+              name: http1
+          resources:
+            limits:
+              cpu: 1000m
+              memory: 512Mi
+          startupProbe:
+            failureThreshold: 1
+            periodSeconds: 240
+            tcpSocket:
+              port: 8080
+            timeoutSeconds: 240
+      serviceAccountName: 1027898580269-compute@developer.gserviceaccount.com
+      timeoutSeconds: 300
+  traffic:
+    - latestRevision: true
+      percent: 100

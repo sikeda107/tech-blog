@@ -1,0 +1,28 @@
+{
+  "name": "http2-upload-test",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node dist/index.js",
+    "build": "tsc",
+    "build:live": "nodemon --watch 'src/**/*.ts' --exec \"ts-node\" -r dotenv/config src/index.ts",
+    "cloudbuild:run": "gcloud builds submit --project=http2-cloudrun-test --config ./cloudbuild.yaml"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@google-cloud/storage": "^7.0.1",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "multer": "^1.4.5-lts.1"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.17",
+    "@types/multer": "^1.4.7",
+    "@types/node": "^20.5.8",
+    "nodemon": "^3.0.1",
+    "typescript": "^5.2.2"
+  },
+  "description": ""
+}

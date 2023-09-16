@@ -1,0 +1,17 @@
+steps:
+  - id: build-nginx-for-proxy
+    name: 'gcr.io/kaniko-project/executor:latest'
+    args:
+      - --dockerfile=nginx/Dockerfile
+      - --destination=${_REPOSITORY}/nginx-proxy:${_IMAGE_TAG}
+      - --context=dir://nginx
+      - --cache=true
+      - --cache-ttl=336h
+      - --snapshot-mode=redo
+      - --use-new-run
+substitutions:
+  _REPOSITORY: asia-northeast1-docker.pkg.dev/http2-cloudrun-test/my-repo
+  _IMAGE_TAG: latest
+options:
+  machineType: 'N1_HIGHCPU_32'
+timeout: 1200s
