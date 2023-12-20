@@ -1,0 +1,24 @@
+steps:
+  - name: 'gcr.io/cloud-builders/gcloud-slim'
+    args:
+      - functions
+      - deploy
+      - ${_SERVICE}
+      - --gen2
+      - --runtime=${_RUNTIME}
+      - --region=${_REGION}
+      - --project=${PROJECT_ID}
+      - --source=${_SOURCE}
+      - --entry-point=${_ENTRY_POINT}
+      - --trigger-topic=${_TRIGGER_TOPIC}
+      - --set-secrets=SLACK_BOT_TOKEN=${_SLACK_BOT_TOKEN}
+      - --set-secrets=SLACK_SIGNING_SECRET=${_SLACK_SIGNING_SECRET}
+substitutions:
+  _REGION: asia-northeast1
+  _SERVICE: pubsub-monitoring-notifier
+  _RUNTIME: nodejs20
+  _ENTRY_POINT: monitoringNotifier
+  _TRIGGER_TOPIC: notificationTopic
+  _SLACK_BOT_TOKEN: slack-bot-user-oauth-token:latest
+  _SLACK_SIGNING_SECRET: slack-signing-secret:latest
+  _SOURCE: .
