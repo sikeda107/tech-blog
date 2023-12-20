@@ -1,3 +1,5 @@
+# はじめに
+
 Cloud Monitoring では、アラートポリシーを作成して Slack へ通知させることができます。
 通知先のチャンネルへ BOT を招待して、ポリシーの通知先として設定するだけですので非常に簡単です。
 ただ、この通知メッセージにはいくつか改善したいポイントがあります。
@@ -6,18 +8,21 @@ Cloud Monitoring では、アラートポリシーを作成して Slack へ通�
 - 情報量が多く、ほとんど活用していない情報もメッセージに含まれる
 - Markdown がそのままメッセージになってしまう
 
-今回は、これらを改善するためにカスタム通知を作成したので、そのご紹介です。
+これらを改善するためにカスタム通知を作成したので、そのご紹介です。
 
 # アーキテクチャ
 
 アラートポリシーの通知先には、Cloud Pub/Sub を指定することができます。
 Cloud Pub/Sub をトリガーとした Cloud Functions を作成し、Cloud Functions で通知内容をカスタマイズしてから Slack へ通知させる流れになります。
+Cloud Functions のデプロイは、Cloud Build でおこないます。また、Slack への認証情報は Secret Manager に保存します。
+![](https://storage.googleapis.com/zenn-user-upload/867b272bedf4-20231220.png)
 
-## Slack & Secret Manager
+# 構築
 
-Slack BOT を作成します。作成方法は、公式サイトにわかりやすく書いてあるので割愛します。
-[Bolt フレームワークを使って Slack Bot を作ろう Slack](https://api.slack.com/lang/ja-jp/hello-world-bolt)
+## 1. Slack & Secret Manager
 
+Slack BOT を作成します。作成方法は公式サイトにわかりやすく書いてあるので割愛します。
+https://api.slack.com/lang/ja-jp/hello-world-bolt
 Slack BOT の Signing Secret と Bot User OAuth Access Token をそれぞれ、Secret Manager に登録します。
 
 ```bash
@@ -31,7 +36,7 @@ echo -n "xoxb-000000000000" | gcloud secrets create slack-bot-user-oauth-token \
     --data-file=-
 ```
 
-## Cloud Monitoring で Cloud Pub/Sub を通知チャンネルとして設定する
+## 2. Cloud Monitoring で Cloud Pub/Sub を通知チャンネルとして設定する
 
 Cloud Monitoring の通知先となる Cloud Pub/Sub を作成します。
 
@@ -49,32 +54,64 @@ export YOUR_PROJECT_ID=xxxxxxxxxx
 gcloud projects describe ${YOUR_PROJECT_ID} --format="value(project_number)"
 ```
 
-Cloud Monitoring でアラートポリシーを作成して、通知チャンネルとして `projects/PROJECT_NUMBER/topics/notificationTopic` を設定したら準備完了です。
+Cloud Monitoring でアラートポリシーを作成して、通知チャンネルとして`projects/PROJECT_NUMBER/topics/notificationTopic`を設定したら準備完了です。
 
-## Cloud Pub/Sub をトリガーとする Cloud Functions を作成する
+## 3. Cloud Pub/Sub をトリガーとする Cloud Functions を作成する
 
 [チュートリアル](https://cloud.google.com/functions/docs/tutorials/pubsub?hl=ja) を参考にして、Cloud Functions を作成します。
+受け取ったメッセージの `incident`に詳細[^1]がはいっています。今回は、６つの値を使います。
 
-[jsarafajr/slackify-markdown](https://github.com/jsarafajr/slackify-markdown) というものを使って、Markdown から Slack の形式に変換をかけて、メッセージを投稿するようにしました
+- documentation.content : アラートポリシーの Documentation
+- policy_name : アラートポリシー名
+- url: 発火したインシデントの Google Cloud Console URL
+- scoping_project_id : 指標スコープをホストするプロジェクト ID
+- state : インシデントの状態で `open` または `closed`
+- severity : アラートポリシーの Severity Level
 
-## 結果の比較
+[^1]: その他のキーは [通知チャンネルを作成する - スキーマの例](https://cloud.google.com/monitoring/support/notification-options?hl=ja#schema-pubsub) をご確認ください。
 
-結果的に
+https://github.com/sikeda107/tech-blog/blob/d6fa284b06aaaadfb5f8b7f22397424e98159dbf/MonitoringNotifier/src/index.ts#L40-L69
 
-- アラートポリシー名
-- インシデント詳細へのリンク
-- プロジェクトの Cloud Monitoring コンソール画面へのリンク
-- インシデントの詳細
+:::message
+テスト通知を送信したときに state の文字列が大文字で、content は空の状態で送信されてきますので、その考慮が必要です
+:::
 
-に落ち着きました。また、インシデントから回復した場合は、結果だけわかればいいので、さらに絞り込んで ポリシー名・各種リンクにしました。
-もとの通知メッセージと比べるとだいぶスッキリしたんじゃないかと思います。
+必要な情報をメッセージから取り出して、Slack の Block Kit を組み立てて送信します。インシデントがオープンしたときと、クローズしたときでラインカラーを変えることで視認性をあげています。
+また、[jsarafajr/slackify-markdown](https://github.com/jsarafajr/slackify-markdown) というものを使って、Markdown から Slack の形式に変換をかけて、メッセージを投稿するようにしました。
 
-## さいごに
+https://github.com/sikeda107/tech-blog/blob/d6fa284b06aaaadfb5f8b7f22397424e98159dbf/MonitoringNotifier/src/index.ts#L105-L134
 
-こういった小さな改善でもアラート疲れを軽減する効果があるかと思います。ぜひ通知内容の改善も実施してみてください！！
+コード全体は[こちら](https://github.com/sikeda107/tech-blog/blob/main/MonitoringNotifier/src/index.ts)にあげています。
 
-## 参考
+## 4. Cloud Build で Cloud Functions を deploy する
 
+Cloud Build をつかって、Cloud Functions を作成します。オプションで Cloud Pub/Sub をトリガーとして設定し作成済みの Secret Manager のシークレットを deploy 時に設定します。こうすることで、環境変数としてアクセスすることができます。
+
+https://github.com/sikeda107/tech-blog/blob/d6fa284b06aaaadfb5f8b7f22397424e98159dbf/MonitoringNotifier/src/index.ts#L8-L11
+
+ビルド構成ファイルを作成して、deploy を実行します。
+
+```bash
+# deployコマンド
+gcloud builds submit --project=${YOUR_PROJECT_ID} --config ./cloudbuild.yaml
+```
+
+https://github.com/sikeda107/tech-blog/blob/main/MonitoringNotifier/cloudbuild.yaml
+
+## 5. 通知をテストする
+
+アラートポリシーを作成したあと、Cloud Pub/Sub のトピックを通知先に設定してください。Cloud Pub/Sub と Cloud Functions を挟んでいるため若干のタイムラグはありますが、正常にメッセージを受信できれば成功です 🎉
+左が今回の通知メッセージで、右がもともとの通知メッセージです。画面の占有度がだいぶかわったことがわかると思います 😄
+ドキュメントもきちんとフォーマットされているので、メッセージとしてもスッキリとした印象があります。
+![](https://storage.googleapis.com/zenn-user-upload/328dcab15282-20231220.png)
+
+# さいごに
+
+こういった小さな改善でもアラート疲れを軽減する効果があるかと思います。ぜひ通知内容の改善も実施してみてください 🔔
+
+# 参考
+
+- [Cloud Monitoring と Cloud Run を使用したカスタム通知の作成 Google Cloud 公式ブログ](https://cloud.google.com/blog/ja/products/operations/write-and-deploy-cloud-monitoring-alert-notifications-to-third-party-services)
 - [通知チャンネルの作成と管理 Google Cloud](https://cloud.google.com/monitoring/support/notification-options?hl=ja#creating_channels)
 - [Secret Manager を使用してシークレットを作成してアクセスする Google Cloud](https://cloud.google.com/secret-manager/docs/create-secret-quickstart?hl=ja)
 - [Cloud Pub/Sub のチュートリアル（第 2 世代）Google Cloud Functions に関するドキュメント](https://cloud.google.com/functions/docs/tutorials/pubsub?hl=ja)
