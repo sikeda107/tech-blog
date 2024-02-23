@@ -18,5 +18,3 @@ steps:
       echo "完了しました！"
     waitFor:
       - cancelot
-# options:
-#   logging: CLOUD_LOGGING_ONLY
