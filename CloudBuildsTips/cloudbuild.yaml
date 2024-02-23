@@ -9,3 +9,5 @@ steps:
         sleep 1
       done
       echo "完了しました！"
+options:
+  logging: CLOUD_LOGGING_ONLY
