@@ -1,9 +1,4 @@
 steps:
-  - name: 'ubuntu:latest'
-    args:
-      - 'ls'
-      - '-alh'
-      - 'CloudBuildsTips'
   - id: cancelot
     name: 'gcr.io/cloud-builders/gcloud-slim'
     entrypoint: bash
