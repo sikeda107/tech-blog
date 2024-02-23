@@ -1,4 +1,7 @@
 steps:
+  - name: 'bash'
+    args:
+      - 'ls -alh'
   - id: cancelot
     name: 'gcr.io/cloud-builders/gcloud-slim'
     entrypoint: bash
