@@ -1,14 +1,12 @@
 steps:
   - id: cancelot
-    name: 'gcr.io/$PROJECT_ID/cancelot'
+    name: 'gcr.io/cloud-builders/gcloud-slim'
+    entrypoint: bash
     args:
-      [
-        '--current_build_id',
-        '$BUILD_ID',
-        '--branch_name',
-        '$BRANCH_NAME',
-        '--same_trigger_only',
-      ]
+      - CloudBuldsTips/cancelot.sh --same_trigger_only
+    env:
+      - 'CURRENT_BUILD_ID=$BUILD_ID'
+      - 'PROJECT_ID=$PROJECT_ID'
   - id: 'wait-120-seconds'
     name: 'bash'
     script: |
