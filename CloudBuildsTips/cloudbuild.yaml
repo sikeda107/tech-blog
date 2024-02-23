@@ -1,0 +1,11 @@
+steps:
+  - id: 'wait-120-seconds'
+    name: 'bash'
+    script: |
+      #!/usr/bin/env bash
+      # 120秒間、毎秒カウントダウン
+      for i in {120..1}; do
+        echo "待機中... 残り${i}秒"
+        sleep 1
+      done
+      echo "完了しました！"
