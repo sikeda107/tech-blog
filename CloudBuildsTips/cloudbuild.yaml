@@ -1,20 +1,20 @@
 steps:
-  - id: cancelot
+  - id: waiting
     name: 'gcr.io/cloud-builders/gcloud-slim'
     entrypoint: bash
-    args: ['CloudBuildsTips/cancelot.sh', '--same_trigger_only']
+    args: ['CloudBuildsTips/waiting.sh']
     env:
       - 'CURRENT_BUILD_ID=$BUILD_ID'
       - 'PROJECT_ID=$PROJECT_ID'
-  - id: 'wait-120-seconds'
+  - id: 'wait-30-seconds'
     name: 'bash'
     script: |
       #!/usr/bin/env bash
-      # 120秒間、毎秒カウントダウン
-      for i in {120..1}; do
+      # 30秒間、毎秒カウントダウン
+      for i in {30..1}; do
         echo "待機中... 残り${i}秒"
         sleep 1
       done
       echo "完了しました！"
     waitFor:
-      - cancelot
+      - waiting
