@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-set -eux
+# set -euxo pipefail
+set -euo pipefail
 
 GOOGLE_CLOUD_PROJECT=${PROJECT_ID:-$(gcloud config list --format 'get(core.project)')}
 QUERY_BUILD=$(gcloud builds describe "$CURRENT_BUILD_ID" --project="$GOOGLE_CLOUD_PROJECT" --format="csv[no-heading](createTime, buildTriggerId)")
