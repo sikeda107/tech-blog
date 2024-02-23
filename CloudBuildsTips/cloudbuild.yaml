@@ -1,8 +1,6 @@
 steps:
-  - name: 'gcr.io/cloud-builders/gcloud-slim'
-    entrypoint: bash
+  - name: 'ubuntu:latest'
     args:
-      - '-c'
       - 'ls'
       - '-alh'
       - 'CloudBuildsTips'
