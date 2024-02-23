@@ -104,12 +104,15 @@ GOOGLE_CLOUD_PROJECT=${PROJECT_ID:-$(gcloud config list --format 'get(core.proje
 # For example, we could get region for App Engine project like this:
 #  gcloud app describe --project "$GOOGLE_CLOUD_PROJECT" --format 'get(locationId)'
 # But Cloud Builds for AppEngine are multi-regional, so the correct value for region will be empty "" or "(unset)"
-GOOGLE_CLOUD_REGION=${REGION:-"(unset)"}
+# GOOGLE_CLOUD_REGION=${REGION:-"(unset)"}
+if [[ -n $REGION ]]; then
+    GOOGLE_CLOUD_REGION="--region=$REGION"
+fi
 
 echo "Getting Cloud Builds for ProjectId=$GOOGLE_CLOUD_PROJECT with region filter: $GOOGLE_CLOUD_REGION"
 
 # Note BUILD_BRANCH and BUILD_TRIGGER_ID could be empty
-QUERY_BUILD=$(gcloud builds describe "$CURRENT_BUILD_ID" --project="$GOOGLE_CLOUD_PROJECT" --region="$GOOGLE_CLOUD_REGION" --format="csv[no-heading](createTime, buildTriggerId, substitutions.BRANCH_NAME)")
+QUERY_BUILD=$(gcloud builds describe "$CURRENT_BUILD_ID" --project="$GOOGLE_CLOUD_PROJECT" $GOOGLE_CLOUD_REGION --format="csv[no-heading](createTime, buildTriggerId, substitutions.BRANCH_NAME)")
 IFS="," read -r BUILD_CREATE_TIME BUILD_TRIGGER_ID BUILD_BRANCH <<<"$QUERY_BUILD"
 
 FILTERS="id!=$CURRENT_BUILD_ID AND createTime<$BUILD_CREATE_TIME"
@@ -131,7 +134,7 @@ echo "Filtering ongoing builds for branch '$TARGET_BRANCH' created before: $BUIL
 # echo "$FILTERS"
 
 # Get ongoing build ids to cancel (+status)
-while IFS=$'\n' read -r line; do CANCEL_BUILDS+=("$line"); done < <(gcloud builds list --ongoing --filter="$FILTERS" --project="$GOOGLE_CLOUD_PROJECT" --region="$GOOGLE_CLOUD_REGION" --format="value(id, status)")
+while IFS=$'\n' read -r line; do CANCEL_BUILDS+=("$line"); done < <(gcloud builds list --ongoing --filter="$FILTERS" --project="$GOOGLE_CLOUD_PROJECT" $GOOGLE_CLOUD_REGION --format="value(id, status)")
 
 BUILDS_COUNT=${#CANCEL_BUILDS[@]}
 echo "Found $BUILDS_COUNT builds to cancel"
@@ -145,5 +148,5 @@ echo "BUILD ID                                CURRENT STATUS"
 for build in "${CANCEL_BUILDS[@]}"; do
     echo "$build"
     ID=$(echo "$build" | awk '{print $1;}')
-    gcloud builds cancel "$ID" --project="$GOOGLE_CLOUD_PROJECT" --region="$GOOGLE_CLOUD_REGION" >/dev/null || true
+    gcloud builds cancel "$ID" --project="$GOOGLE_CLOUD_PROJECT" $GOOGLE_CLOUD_REGION >/dev/null || true
 done
