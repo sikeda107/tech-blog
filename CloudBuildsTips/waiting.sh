@@ -9,7 +9,7 @@ FILTERS="id!=$CURRENT_BUILD_ID AND createTime<$BUILD_CREATE_TIME AND buildTrigge
 echo "Waiting for all builds to finish $FILTERS"
 while
   BUILDS_COUNT=$(gcloud builds list --ongoing --filter="$FILTERS" --format="value(id)" | wc -l)
-  (( BUILDS_COUNT < 1 ))
+  (( BUILDS_COUNT >= 1 ))
 do
   echo "Current number of ongoing builds: $BUILDS_COUNT. Please wait a moment..."
   sleep 5
