@@ -3,7 +3,7 @@ steps:
     name: 'gcr.io/cloud-builders/gcloud-slim'
     entrypoint: bash
     args:
-      - CloudBuldsTips/cancelot.sh --same_trigger_only
+      - CloudBuildsTips/cancelot.sh --same_trigger_only
     env:
       - 'CURRENT_BUILD_ID=$BUILD_ID'
       - 'PROJECT_ID=$PROJECT_ID'
