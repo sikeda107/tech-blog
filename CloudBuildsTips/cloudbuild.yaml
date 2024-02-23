@@ -1,4 +1,14 @@
 steps:
+  - id: cancelot
+    name: 'gcr.io/$PROJECT_ID/cancelot'
+    args:
+      [
+        '--current_build_id',
+        '$BUILD_ID',
+        '--branch_name',
+        '$BRANCH_NAME',
+        '--same_trigger_only',
+      ]
   - id: 'wait-120-seconds'
     name: 'bash'
     script: |
@@ -9,6 +19,7 @@ steps:
         sleep 1
       done
       echo "完了しました！"
-
+    waitFor:
+      - cancelot
 # options:
 #   logging: CLOUD_LOGGING_ONLY
