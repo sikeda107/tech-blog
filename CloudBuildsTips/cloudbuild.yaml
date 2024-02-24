@@ -6,6 +6,7 @@ steps:
     env:
       - 'CURRENT_BUILD_ID=$BUILD_ID'
       - 'PROJECT_ID=$PROJECT_ID'
+      - 'INTERVAL=10'
   - id: 'wait-30-seconds'
     name: 'bash'
     script: |
