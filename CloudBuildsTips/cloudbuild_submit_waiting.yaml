@@ -1,0 +1,36 @@
+steps:
+  - id: waiting
+    name: 'gcr.io/cloud-builders/gcloud-slim'
+    entrypoint: bash
+    args: ['cloud_build_lock_manager.sh', 'wait-process']
+    env:
+      - 'CURRENT_BUILD_ID=$BUILD_ID'
+      - 'PROJECT_ID=$PROJECT_ID'
+      - 'INTERVAL=$_INTERVAL'
+      - 'TRIGGER_NAME=$_TRIGGER_NAME'
+  - id: 'wait-30-seconds'
+    name: 'bash'
+    script: |
+      #!/usr/bin/env bash
+      # 30秒間、毎秒カウントダウン
+      for i in {30..1}; do
+        echo "待機中... 残り${i}秒"
+        sleep 1
+      done
+      echo "完了しました！"
+    waitFor:
+      - waiting
+  - id: 'post-process'
+    name: 'gcr.io/cloud-builders/gcloud-slim'
+    entrypoint: bash
+    args: ['cloud_build_lock_manager.sh', 'post-process']
+    env:
+      - 'CURRENT_BUILD_ID=$BUILD_ID'
+      - 'PROJECT_ID=$PROJECT_ID'
+      - 'INTERVAL=$_INTERVAL'
+      - 'TRIGGER_NAME=$_TRIGGER_NAME'
+    waitFor:
+      - 'wait-30-seconds'
+substitutions:
+  _INTERVAL: '10'
+  _TRIGGER_NAME: wait-30-seconds
