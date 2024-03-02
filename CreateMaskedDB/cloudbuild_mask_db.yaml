@@ -16,3 +16,5 @@ steps:
       PID=$! && echo "Cloud SQL Proxy started - pid: $PID"
       sleep 5 # && ./export-masked-data.sh mask_data
       kill $PID && echo "Cloud SQL Proxy killed - pid: $PID"
+options:
+  logging: CLOUD_LOGGING_ONLY
