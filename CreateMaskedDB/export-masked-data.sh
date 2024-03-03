@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-set -euxo pipefail
-# set -euo pipefail
+# set -euxo pipefail
+set -euo pipefail
 
 SOURCE_INSTANCE="main"
 TARGET_INSTANCE="main-clone"
