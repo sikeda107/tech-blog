@@ -6,7 +6,6 @@ SOURCE_INSTANCE="main"
 TARGET_INSTANCE="main-clone"
 BUCKET_NAME="gs://${PROJECT_ID}_export-sql"
 DATABASE="world"
-USERNAME=$SERVICE_ACCOUNT
 
 function clone_instance {
   local COUNT
@@ -33,12 +32,6 @@ function export_sql {
   echo "Exported $DATABASE from $TARGET_INSTANCE to $BUCKET_NAME/$DATABASE/$YEAR/$FILE_NAME"
 }
 
-function mask_data {
-  local DB_PASSWORD
-  DB_PASSWORD=$(gcloud sql generate-login-token)
-  mysql -u $USERNAME -p$DB_PASSWORD --host 127.0.0.1 --port 13306 --enable-cleartext-plugin <mask.sql
-}
-
 # コマンドの引数に応じて関数を呼び出す
 case "$1" in
 clone_instance)
@@ -47,11 +40,8 @@ clone_instance)
 export_sql)
   export_sql
   ;;
-mask_data)
-  mask_data
-  ;;
 *)
-  echo "Usage: $0 {clone_instance|export_sql|mask_data}"
+  echo "Usage: $0 {clone_instance|export_sql}"
   exit 1
   ;;
 esac
