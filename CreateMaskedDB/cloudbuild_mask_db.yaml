@@ -6,7 +6,7 @@ steps:
     env:
       - 'PROJECT_ID=${PROJECT_ID}'
     args:
-      - 'CreateMaskedDB/export-masked-database.sh'
+      - 'CreateMaskedDB/export-masked-data.sh'
       - 'clone_instance'
     timeout: '1200s'
   - id: 'mask-database'
@@ -37,7 +37,7 @@ steps:
     env:
       - 'PROJECT_ID=${PROJECT_ID}'
     args:
-      - 'CreateMaskedDB/export-masked-database.sh'
+      - 'CreateMaskedDB/export-masked-data.sh'
       - 'export_sql'
 options:
   logging: CLOUD_LOGGING_ONLY
