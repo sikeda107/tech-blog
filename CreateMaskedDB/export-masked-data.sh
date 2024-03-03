@@ -23,7 +23,7 @@ function export_sql {
   local SERVICE_ACCOUNT
   local FILE_NAME
   local YEAR
-  SERVICE_ACCOUNT="$(gcloud sql instances describe $TARGET_INSTANCE --format="json(serviceAccountEmailAddress)" | jq -r '.serviceAccountEmailAddress')"
+  SERVICE_ACCOUNT="$(gcloud sql instances describe $TARGET_INSTANCE --format="csv[no-heading](serviceAccountEmailAddress)")"
   gcloud projects add-iam-policy-binding $PROJECT_ID --member="serviceAccount:$SERVICE_ACCOUNT" --role=roles/storage.objectCreator --condition=None
   echo "Added roles/storage.objectCreator to $SERVICE_ACCOUNT"
   FILE_NAME="$(date +"%Y%m%d").sql.gz"
