@@ -1,6 +1,17 @@
 steps:
+  - id: 'clone-instance'
+    name: 'gcr.io/cloud-builders/gcloud-slim'
+    waitFor: ['-']
+    entrypoint: 'bash'
+    env:
+      - 'PROJECT_ID=${PROJECT_ID}'
+    args:
+      - 'CreateMaskedDB/export-masked-database.sh'
+      - 'clone_instance'
+    timeout: '1200s'
   - id: 'mask-database'
     name: 'gcr.io/cloud-builders/gcloud-slim'
+    waitFor: ['clone-instance']
     env:
       - 'PROJECT_ID=${PROJECT_ID}'
       - '_DATABASE_PORT=13306'
@@ -19,5 +30,14 @@ steps:
       DB_PASSWORD=$(gcloud sql generate-login-token)
       mysql -u $SERVICE_ACCOUNT -p$DB_PASSWORD --host 127.0.0.1 --port 13306 --enable-cleartext-plugin <CreateMaskedDB/mask.sql
       kill $PID && echo "Cloud SQL Proxy killed - pid: $PID"
+  - id: 'export-sql'
+    name: 'gcr.io/cloud-builders/gcloud-slim'
+    waitFor: ['mask-database']
+    entrypoint: 'bash'
+    env:
+      - 'PROJECT_ID=${PROJECT_ID}'
+    args:
+      - 'CreateMaskedDB/export-masked-database.sh'
+      - 'export_sql'
 options:
   logging: CLOUD_LOGGING_ONLY
