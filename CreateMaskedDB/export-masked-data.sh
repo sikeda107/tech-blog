@@ -9,7 +9,7 @@ DATABASE="world"
 
 function clone_instance {
   local COUNT
-  COUNT=$(gcloud sql instances list --filter="name=$TARGET_INSTANCE" --format=json | jq 'length')
+  COUNT=$(gcloud sql instances list --filter="name=$TARGET_INSTANCE" --format="csv[no-heading](name)" | wc -l)
   if [ "$COUNT" -gt 0 ]; then
     echo "$TARGET_INSTANCE already exists. Deleting it."
     gcloud sql instances delete $TARGET_INSTANCE
