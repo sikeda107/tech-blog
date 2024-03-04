@@ -23,13 +23,18 @@ function export_sql {
   local SERVICE_ACCOUNT
   local FILE_NAME
   local YEAR
+  local ROLES
   SERVICE_ACCOUNT="$(gcloud sql instances describe $TARGET_INSTANCE --format="csv[no-heading](serviceAccountEmailAddress)")"
-  gcloud projects add-iam-policy-binding $PROJECT_ID --member="serviceAccount:$SERVICE_ACCOUNT" --role=roles/storage.objectCreator --condition=None
-  echo "Added roles/storage.objectCreator to $SERVICE_ACCOUNT"
+  ROLES=("roles/storage.objectCreator" "roles/storage.objectViewer")
+  for ROLE in "${ROLES[@]}"; do
+    echo "Add $ROLE to $SERVICE_ACCOUNT"
+    gcloud projects add-iam-policy-binding $PROJECT_ID --member="serviceAccount:$SERVICE_ACCOUNT" --role=$ROLE --condition=None
+  done
   FILE_NAME="$(date +"%Y%m%d").sql.gz"
   YEAR=$(date +"%Y")
+  echo "Export $DATABASE from $TARGET_INSTANCE to $BUCKET_NAME/$DATABASE/$YEAR/$FILE_NAME"
   gcloud sql export sql $TARGET_INSTANCE "$BUCKET_NAME/$DATABASE/$YEAR/$FILE_NAME" --database=$DATABASE
-  echo "Exported $DATABASE from $TARGET_INSTANCE to $BUCKET_NAME/$DATABASE/$YEAR/$FILE_NAME"
+
 }
 
 # コマンドの引数に応じて関数を呼び出す
