@@ -28,7 +28,7 @@ function export_sql {
   ROLES=("roles/storage.objectCreator" "roles/storage.objectViewer")
   for ROLE in "${ROLES[@]}"; do
     echo "Add $ROLE to $SERVICE_ACCOUNT"
-    gcloud projects add-iam-policy-binding $PROJECT_ID --member="serviceAccount:$SERVICE_ACCOUNT" --role=$ROLE --condition=None
+    gcloud projects add-iam-policy-binding $PROJECT_ID --member="serviceAccount:$SERVICE_ACCOUNT" --role=$ROLE --condition=None --quiet
   done
   FILE_NAME="$(date +"%Y%m%d").sql.gz"
   YEAR=$(date +"%Y")
