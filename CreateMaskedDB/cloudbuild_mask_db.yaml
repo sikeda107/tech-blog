@@ -1,43 +1,51 @@
 steps:
-  # - id: 'clone-instance'
-  #   name: 'gcr.io/cloud-builders/gcloud-slim'
-  #   waitFor: ['-']
-  #   entrypoint: 'bash'
-  #   env:
-  #     - 'PROJECT_ID=${PROJECT_ID}'
-  #   args:
-  #     - 'CreateMaskedDB/export-masked-data.sh'
-  #     - 'clone_instance'
-  #   timeout: '1200s'
-  # - id: 'mask-database'
-  #   name: 'gcr.io/cloud-builders/gcloud-slim'
-  #   waitFor: ['clone-instance']
-  #   env:
-  #     - 'PROJECT_ID=${PROJECT_ID}'
-  #     - '_DATABASE_PORT=13306'
-  #     - '_INSTANCE_CONNECTION_NAME=${PROJECT_ID}:asia-northeast1:main-clone'
-  #     - 'SERVICE_ACCOUNT=export-mask-database'
-  #   script: |
-  #     #!/usr/bin/env bash
-  #     set -euo pipefail
-  #     apt update -y > /dev/null
-  #     apt install -y mysql-client > /dev/null
-  #     curl -o cloud-sql-proxy https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.6.1/cloud-sql-proxy.linux.amd64 > /dev/null
-  #     chmod +x cloud-sql-proxy
-  #     ./cloud-sql-proxy --port ${_DATABASE_PORT} ${_INSTANCE_CONNECTION_NAME} &
-  #     PID=$! && echo "Cloud SQL Proxy started - pid: $PID"
-  #     sleep 5
-  #     DB_PASSWORD=$(gcloud sql generate-login-token)
-  #     mysql -u $SERVICE_ACCOUNT -p$DB_PASSWORD --host 127.0.0.1 --port 13306 --enable-cleartext-plugin <CreateMaskedDB/mask.sql
-  #     kill $PID && echo "Cloud SQL Proxy killed - pid: $PID"
-  - id: 'export-sql'
+  - id: 'clone-instance'
     name: 'gcr.io/cloud-builders/gcloud-slim'
-    # waitFor: ['mask-database']
+    waitFor: ['-']
     entrypoint: 'bash'
     env:
       - 'PROJECT_ID=${PROJECT_ID}'
+      - 'SOURCE_INSTANCE=${_SOURCE_INSTANCE}'
+      - 'TARGET_INSTANCE=${_TARGET_INSTANCE}'
+    args:
+      - 'CreateMaskedDB/export-masked-data.sh'
+      - 'clone_instance'
+    timeout: '1200s'
+  - id: 'mask-database'
+    name: 'gcr.io/cloud-builders/gcloud-slim'
+    waitFor: ['clone-instance']
+    env:
+      - 'PROJECT_ID=${PROJECT_ID}'
+      - 'DATABASE_PORT=13306'
+      - 'INSTANCE_CONNECTION_NAME=${PROJECT_ID}:asia-northeast1:${_TARGET_INSTANCE}'
+      - 'SERVICE_ACCOUNT=export-mask-database'
+    script: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      apt update -y > /dev/null
+      apt install -y mysql-client > /dev/null
+      curl -o cloud-sql-proxy https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.6.1/cloud-sql-proxy.linux.amd64 > /dev/null
+      chmod +x cloud-sql-proxy
+      ./cloud-sql-proxy --port ${DATABASE_PORT} ${INSTANCE_CONNECTION_NAME} &
+      PID=$! && echo "Cloud SQL Proxy started - pid: $PID"
+      sleep 5
+      DB_PASSWORD=$(gcloud sql generate-login-token)
+      mysql -u $SERVICE_ACCOUNT -p$DB_PASSWORD --host 127.0.0.1 --port 13306 --enable-cleartext-plugin <CreateMaskedDB/mask.sql
+      kill $PID && echo "Cloud SQL Proxy killed - pid: $PID"
+  - id: 'export-sql'
+    name: 'gcr.io/cloud-builders/gcloud-slim'
+    waitFor: ['mask-database']
+    entrypoint: 'bash'
+    env:
+      - 'PROJECT_ID=${PROJECT_ID}'
+      - 'TARGET_INSTANCE=${_TARGET_INSTANCE}'
+      - 'DATABASE=world'
     args:
       - 'CreateMaskedDB/export-masked-data.sh'
       - 'export_sql'
+substitutions:
+  _SERVICE_ACCOUNT: 'export-mask-database'
+  _SOURCE_INSTANCE: 'main'
+  _TARGET_INSTANCE: 'main-clone'
 options:
   logging: CLOUD_LOGGING_ONLY
