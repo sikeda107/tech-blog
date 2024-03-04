@@ -31,6 +31,7 @@ function export_sql {
     echo "Add $ROLE to $SERVICE_ACCOUNT"
     gcloud projects add-iam-policy-binding $PROJECT_ID --member="serviceAccount:$SERVICE_ACCOUNT" --role=$ROLE --condition=None --quiet >/dev/null
   done
+  sleep 5
   FILE_NAME="$(date +"%Y%m%d").sql.gz"
   YEAR=$(date +"%Y")
   echo "Export $DATABASE from $TARGET_INSTANCE to $BUCKET_NAME/$DATABASE/$YEAR/$FILE_NAME"
