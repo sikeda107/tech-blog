@@ -1,18 +1,6 @@
 #!/usr/bin/env bash
 # set -euxo pipefail
 set -euo pipefail
-case "$1" in
-clone_instance)
-  clone_instance
-  ;;
-export_sql)
-  export_sql
-  ;;
-*)
-  echo "Usage: $0 {clone_instance|export_sql}"
-  exit 1
-  ;;
-esac
 
 if [[ "$PROJECT_ID" == "" ]]; then
   echo "PROJECT_ID is not set"
@@ -61,5 +49,17 @@ function export_sql {
   YEAR=$(date +"%Y")
   echo "Export $DATABASE from $TARGET_INSTANCE to $BUCKET_NAME/$DATABASE/$YEAR/$FILE_NAME"
   gcloud sql export sql $TARGET_INSTANCE "$BUCKET_NAME/$DATABASE/$YEAR/$FILE_NAME" --database=$DATABASE
-
 }
+
+case "$1" in
+clone_instance)
+  clone_instance
+  ;;
+export_sql)
+  export_sql
+  ;;
+*)
+  echo "Usage: $0 {clone_instance|export_sql}"
+  exit 1
+  ;;
+esac
