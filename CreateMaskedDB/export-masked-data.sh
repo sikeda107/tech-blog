@@ -25,7 +25,8 @@ function export_sql {
   local YEAR
   local ROLES
   SERVICE_ACCOUNT="$(gcloud sql instances describe $TARGET_INSTANCE --format="csv[no-heading](serviceAccountEmailAddress)")"
-  ROLES=("roles/storage.objectCreator" "roles/storage.objectViewer")
+  # ROLES=("roles/storage.objectCreator" "roles/storage.objectViewer")
+  ROLES=("roles/storage.legacyBucketWriter")
   for ROLE in "${ROLES[@]}"; do
     echo "Add $ROLE to $SERVICE_ACCOUNT"
     gcloud projects add-iam-policy-binding $PROJECT_ID --member="serviceAccount:$SERVICE_ACCOUNT" --role=$ROLE --condition=None --quiet
