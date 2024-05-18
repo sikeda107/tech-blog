@@ -1,0 +1,10 @@
+steps:
+  - id: 'wait-10-seconds'
+    name: 'bash'
+    script: |
+      #!/usr/bin/env bash
+      for i in {10..1}; do
+        echo "待機中... 残り${i}秒"
+        sleep 1
+      done
+      echo "完了しました！"
