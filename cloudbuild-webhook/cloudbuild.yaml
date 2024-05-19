@@ -3,7 +3,6 @@ steps:
     name: 'bash'
     script: |
       #!/usr/bin/env bash
-      exit 1
       for i in {10..1}; do
         echo "待機中... 残り${i}秒"
         sleep 1
