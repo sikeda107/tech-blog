@@ -1,0 +1,39 @@
+name: CodiumAI PR-Agent
+run-name: CodiumAI PR-Agent [${{github.event.number}}]
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review]
+  issue_comment:
+    types: [created]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pr_agent_job:
+    if: ${{ github.event.sender.type != 'Bot' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      id-token: write
+      issues: write
+      pull-requests: write
+      contents: write
+    name: Run pr agent on every pull request, respond to user comments
+    steps:
+      - uses: actions/checkout@v4
+      - name: Auth to Google Cloud by OpenID Connect
+        uses: google-github-actions/auth@v2.1.6
+        with:
+          project_id: 'Your Google Cloud Project ID'
+          workload_identity_provider: 'projects/000000000/locations/global/workloadIdentityPools/github-for-pr-agent/providers/github-for-pr-agent-oidc'
+          access_token_lifetime: 300s
+      - name: PR Agent action step
+        id: pr-agent
+        uses: Codium-ai/pr-agent@d4d9a7f8b456f57422fae1e819c98f6f40966402 # v0.24
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # config.model: 'vertex_ai/gemini-1.5-flash'
+          # config.model_turbo: 'vertex_ai/gemini-1.5-flash'
+          # config.fallback_models: 'vertex_ai/gemini-1.5-flash'
