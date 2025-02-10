@@ -1,0 +1,7 @@
+.gcloudignore
+.git
+.gitignore
+node_modules
+cloudbuild.yaml
+README.md
+biome.json

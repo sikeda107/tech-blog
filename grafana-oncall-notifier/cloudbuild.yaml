@@ -1,0 +1,30 @@
+steps:
+  - name: "gcr.io/cloud-builders/gcloud-slim"
+    args:
+      - functions
+      - deploy
+      - ${_SERVICE}
+      - --gen2
+      - --runtime=${_RUNTIME}
+      - --region=${_REGION}
+      - --project=${PROJECT_ID}
+      - --source=${_SOURCE}
+      - --set-secrets=GRAFANA_WEBHOOK_URL=${_GRAFANA_WEBHOOK_URL}
+      - --entry-point=${_ENTRY_POINT}
+      - --trigger-topic=${_TRIGGER_TOPIC}
+      - --service-account=${_SERVICE_ACCOUNT}@${PROJECT_ID}.iam.gserviceaccount.com
+      - --ingress-settings=internal-only
+      - --no-allow-unauthenticated
+      - --min-instances=0
+      - --max-instances=1
+      - --cpu=0.167
+      - --memory=256Mi
+substitutions:
+  _REGION: asia-northeast1
+  _SERVICE: pubsub-grafana-oncall-notifier
+  _RUNTIME: nodejs22
+  _ENTRY_POINT: grafanaOncallNotifier
+  _TRIGGER_TOPIC: grafana-oncall-notifier
+  _SOURCE: ./grafana-oncall-notifier
+  _SERVICE_ACCOUNT: pubsub-grafana-oncall-notifier
+  _GRAFANA_WEBHOOK_URL: grafana-webhook-url:latest
