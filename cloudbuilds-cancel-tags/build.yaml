@@ -24,7 +24,7 @@ steps:
     args:
       - builds 
       - submit 
-      - --config=/workspace/deploy.yaml
+      - --config=cloudbuilds-cancel-tags/deploy.yaml
     waitFor:
       - cancelot
 tags:
