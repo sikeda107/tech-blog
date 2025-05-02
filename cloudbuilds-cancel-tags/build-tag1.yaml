@@ -5,7 +5,7 @@ steps:
     args:
       - -c
       - |
-        cloudbuilds-cancel-tags/cancelot.sh --current_build_id $BUILD_ID --tags "build"
+        cloudbuilds-cancel-tags/cancelot.sh --current_build_id $BUILD_ID --tags "tag1,tag2"
   - id: 'wait-5-seconds'
     name: 'bash'
     script: |
@@ -24,11 +24,11 @@ steps:
     args:
       - builds 
       - submit 
-      - --config=cloudbuilds-cancel-tags/deploy.yaml
+      - --config=cloudbuilds-cancel-tags/deploy-tag1.yaml
     waitFor:
       - wait-5-seconds
 tags:
-  - build
+  - build-tag1
 
 options:
   defaultLogsBucketBehavior: REGIONAL_USER_OWNED_BUCKET
