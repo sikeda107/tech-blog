@@ -1,0 +1,22 @@
+steps:
+  - id: cancelot
+    name: 'gcr.io/cloud-builders/gcloud-slim'
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        ./cancelot.sh --current_build_id $BUILD_ID --tags "deploy"
+  - id: 'wait-30-seconds'
+    name: 'bash'
+    script: |
+      #!/usr/bin/env bash
+      # 60秒間、毎秒カウントダウン
+      for i in {60..1}; do
+        echo "待機中... 残り${i}秒"
+        sleep 1
+      done
+      echo "完了しました！"
+    waitFor:
+      - cancelot
+tags:
+  - deploy
