@@ -5,7 +5,11 @@ steps:
     args:
       - -c
       - |
-        cloudbuilds-cancel-tags/cancelot.sh --current_build_id $BUILD_ID --tags "build"
+        cloudbuilds-cancel-tags/cancelot.sh --tags "build"
+    env:
+      - 'CURRENT_BUILD_ID=$BUILD_ID'
+      - 'PROJECT_ID=$PROJECT_ID'
+      - 'REGION=$LOCATION'
   - id: 'wait-5-seconds'
     name: 'bash'
     script: |
@@ -20,10 +24,10 @@ steps:
       - cancelot
   - id: 'submit deploy'
     name: 'gcr.io/cloud-builders/gcloud-slim'
-    # entrypoint: bash
     args:
       - builds 
       - submit 
+      - --region=$LOCATION
       - --config=cloudbuilds-cancel-tags/deploy.yaml
     waitFor:
       - wait-5-seconds
