@@ -1,0 +1,16 @@
+createTime: '2025-05-02T06:28:26.825516284Z'
+gitFileSource:
+  path: cloudbuilds-cancel-tags/build.yaml
+  repoType: GITHUB
+  revision: refs/heads/main
+  uri: https://www.github.com/sikeda107/tech-blog
+id: 559f9e24-0eca-4df5-91ae-0f4de7b655c3
+name: my-manual-trigger
+resourceName: projects/logical-craft-441308-v0/locations/global/triggers/559f9e24-0eca-4df5-91ae-0f4de7b655c3
+serviceAccount: projects/logical-craft-441308-v0/serviceAccounts/1093170776430-compute@developer.gserviceaccount.com
+sourceToBuild:
+  ref: refs/heads/main
+  repoType: GITHUB
+  uri: https://www.github.com/sikeda107/tech-blog
+tags:
+- tag9
