@@ -1,12 +1,5 @@
 steps:
-  - id: cancelot
-    name: 'gcr.io/cloud-builders/gcloud-slim'
-    entrypoint: bash
-    args:
-      - -c
-      - |
-        cloudbuilds-cancel-tags/cancelot.sh --current_build_id $BUILD_ID --tags "deploy-tag1,deploy-tag2"
-  - id: 'wait-30-seconds'
+  - id: 'wait'
     name: 'bash'
     script: |
       #!/usr/bin/env bash
@@ -16,10 +9,8 @@ steps:
         sleep 1
       done
       echo "完了しました！"
-    waitFor:
-      - cancelot
 tags:
-  - deploy-tag1
+  - deploy
 
 options:
   defaultLogsBucketBehavior: REGIONAL_USER_OWNED_BUCKET

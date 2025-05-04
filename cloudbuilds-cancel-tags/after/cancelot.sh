@@ -43,23 +43,20 @@ echoerr() { echo "$@" 1>&2; }
 usage() {
     cat <<USAGE >&2
 Usage:
-    $CMDNAME --current_build_id \$BUILD_ID [--branch_name \$BRANCH_NAME] [--same_trigger_only] [--project "gcloud-project-id"] [--region "europe-west2"] [--tags "tag1,tag2"]
+    $CMDNAME --current_build_id \$BUILD_ID [--branch_name \$BRANCH_NAME] [--same_trigger_only] [--project "gcloud-project-id"] [--region "europe-west2"]
     --current_build_id \$BUILD_ID  Current Build Id
     --branch_name \$BRANCH_NAME    Trigger branch (aka head branch)
                                     (optional, defaults to current build substitutions.BRANCH_NAME)
     --project                      GCloud Project Id
     --region                       GCloud Region, empty value
-    --same_trigger_only            Only cancel builds with the same Trigger Id as current build's trigger id
+    --same_trigger_only            Only cancel builds with the same Trigger Id as current build’s trigger id
                                     (optional, defaults to false = cancel all matching branch)
-    --tags                         Comma-separated list of tags to filter builds
-                                    (optional, if not provided, no tag filtering is applied)
 USAGE
     exit 1
 }
 
 SAME_TRIGGER_ONLY=0
 TAGS=""
-
 # Process arguments
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -111,9 +108,7 @@ GOOGLE_CLOUD_PROJECT=${PROJECT_ID:-$(gcloud config list --format 'get(core.proje
 # For example, we could get region for App Engine project like this:
 #  gcloud app describe --project "$GOOGLE_CLOUD_PROJECT" --format 'get(locationId)'
 # But Cloud Builds for AppEngine are multi-regional, so the correct value for region will be empty "" or "(unset)"
- if [[ -n $REGION ]]; then
-    GOOGLE_CLOUD_REGION="--region=$REGION"
- fi
+GOOGLE_CLOUD_REGION=${REGION:-"(unset)"}
 
 echo "Getting Cloud Builds for ProjectId=$GOOGLE_CLOUD_PROJECT with region filter: $GOOGLE_CLOUD_REGION"
 
@@ -167,5 +162,5 @@ echo "BUILD ID                                CURRENT STATUS"
 for build in "${CANCEL_BUILDS[@]}"; do
     echo "$build"
     ID=$(echo "$build" | awk '{print $1;}')
-    gcloud builds cancel "$ID" --project="$GOOGLE_CLOUD_PROJECT" >/dev/null || true
+    gcloud builds cancel "$ID" --project="$GOOGLE_CLOUD_PROJECT" --region="$GOOGLE_CLOUD_REGION" >/dev/null || true
 done

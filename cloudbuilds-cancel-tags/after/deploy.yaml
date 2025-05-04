@@ -5,34 +5,23 @@ steps:
     args:
       - -c
       - |
-        cloudbuilds-cancel-tags/cancelot.sh --tags "build"
+        ./cancelot.sh --tags "deploy"
     env:
       - 'CURRENT_BUILD_ID=$BUILD_ID'
       - 'PROJECT_ID=$PROJECT_ID'
       - 'REGION=$LOCATION'
-  - id: 'wait-5-seconds'
+  - id: 'wait'
     name: 'bash'
     script: |
       #!/usr/bin/env bash
-      # 5秒間、毎秒カウントダウン
-      for i in {5..1}; do
+      # 60秒間、毎秒カウントダウン
+      for i in {60..1}; do
         echo "待機中... 残り${i}秒"
         sleep 1
       done
       echo "完了しました！"
-    waitFor:
-      - cancelot
-  - id: 'submit deploy'
-    name: 'gcr.io/cloud-builders/gcloud-slim'
-    args:
-      - builds 
-      - submit 
-      - --region=$LOCATION
-      - --config=cloudbuilds-cancel-tags/deploy.yaml
-    waitFor:
-      - wait-5-seconds
 tags:
-  - build
+  - deploy
 
 options:
   defaultLogsBucketBehavior: REGIONAL_USER_OWNED_BUCKET

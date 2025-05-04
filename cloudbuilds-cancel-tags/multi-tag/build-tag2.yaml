@@ -5,21 +5,23 @@ steps:
     args:
       - -c
       - |
-        cloudbuilds-cancel-tags/cancelot.sh --current_build_id $BUILD_ID --tags "deploy"
-  - id: 'wait-30-seconds'
+        ./cancelot.sh --tags "tag1,tag2"
+    env:
+      - 'CURRENT_BUILD_ID=$BUILD_ID'
+      - 'PROJECT_ID=$PROJECT_ID'
+      - 'REGION=$LOCATION'
+  - id: 'wait'
     name: 'bash'
     script: |
       #!/usr/bin/env bash
-      # 60秒間、毎秒カウントダウン
+      # 60秒間、毎秒カウントダウン olp
       for i in {60..1}; do
         echo "待機中... 残り${i}秒"
         sleep 1
       done
       echo "完了しました！"
-    waitFor:
-      - cancelot
 tags:
-  - deploy-tag2
+  - tag2
 
 options:
   defaultLogsBucketBehavior: REGIONAL_USER_OWNED_BUCKET
