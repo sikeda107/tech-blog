@@ -1,0 +1,42 @@
+build:
+  options:
+    logging: CLOUD_LOGGING_ONLY
+  steps:
+  - args:
+    - '@liam-hq/cli'
+    - erd
+    - build
+    - --format
+    - prisma
+    - --input
+    - ${_PRISMA_PATH}/schema.prisma
+    entrypoint: npx
+    name: node:22
+  - allowFailure: true
+    args:
+    - storage
+    - rm
+    - gs://${PROJECT_ID}_static-page/erd/
+    - --recursive
+    entrypoint: gcloud
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+  - args:
+    - storage
+    - cp
+    - --recursive
+    - dist
+    - gs://${PROJECT_ID}_static-page/erd/
+    entrypoint: gcloud
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+  substitutions:
+    _PRISMA_PATH: static-page-viewer/prisma
+github:
+  name: tech-blog
+  owner: sikeda107
+  push:
+    branch: ^main$
+includeBuildLogs: INCLUDE_BUILD_LOGS_WITH_STATUS
+includedFiles:
+- static-page-viewer/prisma/**
+name: erd-builder
+serviceAccount: projects/{YOUR_PROJECT_ID}/serviceAccounts/{YOUR_PROJECT_NUMBER}-compute@developer.gserviceaccount.com
