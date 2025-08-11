@@ -1,0 +1,92 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  annotations:
+    run.googleapis.com/iap-enabled: 'true'
+    run.googleapis.com/ingress: all
+    run.googleapis.com/ingress-status: all
+    run.googleapis.com/invoker-iam-disabled: 'true'
+    run.googleapis.com/launch-stage: BETA
+    run.googleapis.com/manualInstanceCount: '1'
+    run.googleapis.com/scalingMode: manual
+  labels:
+    cloud.googleapis.com/location: asia-northeast1
+  name: redash-server
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/maxScale: '1'
+        run.googleapis.com/cpu-throttling: 'false'
+        run.googleapis.com/network-interfaces: '[{"network":"default","subnetwork":"default"}]'
+        run.googleapis.com/startup-cpu-boost: 'true'
+        run.googleapis.com/vpc-access-egress: private-ranges-only
+    spec:
+      containerConcurrency: 80
+      containers:
+      - args:
+        - server
+        env:
+        - name: REDASH_LOG_LEVEL
+          value: INFO
+        - name: REDASH_REDIS_URL
+          value: redis://{YOUR_REDIS_IP}:6379/0
+        - name: REDASH_MAIL_SERVER
+          value: smtp.sendgrid.net
+        - name: REDASH_MAIL_PORT
+          value: '587'
+        - name: REDASH_MAIL_USE_TLS
+          value: 'true'
+        - name: REDASH_MAIL_USE_SSL
+          value: 'false'
+        - name: REDASH_MAIL_USERNAME
+          value: 'apikey'
+        - name: REDASH_MAIL_DEFAULT_SENDER
+          value: '{YOUR_MAIL_ADDRESS}'
+        - name: REDASH_HOST
+          value: https://redash-server-{YOUR_PROJECT_ID}.asia-northeast1.run.app
+        - name: REDASH_COOKIE_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: redash-cookie-secret
+        - name: REDASH_DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: redash-database-url
+        - name: REDASH_GOOGLE_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: redash-google-client-id
+        - name: REDASH_GOOGLE_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: redash-google-client-secret
+        - name: REDASH_MAIL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: redash-sendgrid-api-key
+        image: asia-northeast1-docker.pkg.dev/{YOUR_PROJECT_ID}/cloud-run-source-deploy/redash:latest
+        name: redash-1
+        ports:
+        - containerPort: 5000
+          name: http1
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 2Gi
+        startupProbe:
+          failureThreshold: 1
+          periodSeconds: 240
+          tcpSocket:
+            port: 5000
+          timeoutSeconds: 240
+      serviceAccountName: cloud-run-redash@{YOUR_PROJECT_ID}.iam.gserviceaccount.com
+      timeoutSeconds: 300
+  traffic:
+  - latestRevision: true
+    percent: 100

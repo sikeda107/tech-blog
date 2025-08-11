@@ -1,0 +1,78 @@
+apiVersion: run.googleapis.com/v1
+kind: WorkerPool
+metadata:
+  annotations:
+    run.googleapis.com/launch-stage: BETA
+    run.googleapis.com/manualInstanceCount: '1'
+    run.googleapis.com/scalingMode: manual
+  labels:
+    cloud.googleapis.com/location: asia-northeast1
+  name: redash-worker-generic
+spec:
+  template:
+    metadata:
+      annotations:
+        run.googleapis.com/execution-environment: gen2
+        run.googleapis.com/network-interfaces: '[{"network":"default","subnetwork":"default"}]'
+        run.googleapis.com/vpc-access-egress: private-ranges-only
+    spec:
+      containerConcurrency: 0
+      containers:
+      - args:
+        - worker
+        env:
+        - name: QUEUES
+          value: periodic,emails,default
+        - name: WORKERS_COUNT
+          value: '1'
+        - name: REDASH_LOG_LEVEL
+          value: INFO
+        - name: REDASH_REDIS_URL
+          value: redis://{YOUR_REDIS_IP}:6379/0
+        - name: REDASH_MAIL_SERVER
+          value: smtp.sendgrid.net
+        - name: REDASH_MAIL_PORT
+          value: '587'
+        - name: REDASH_MAIL_USE_TLS
+          value: 'true'
+        - name: REDASH_MAIL_USE_SSL
+          value: 'false'
+        - name: REDASH_MAIL_USERNAME
+          value: 'apikey'
+        - name: REDASH_MAIL_DEFAULT_SENDER
+          value: '{YOUR_MAIL_ADDRESS}'
+        - name: REDASH_HOST
+          value: https://redash-server-{YOUR_PROJECT_ID}.asia-northeast1.run.app
+        - name: REDASH_COOKIE_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: redash-cookie-secret
+        - name: REDASH_DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: redash-database-url
+        - name: REDASH_MAIL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: redash-sendgrid-api-key
+        image: asia-northeast1-docker.pkg.dev/{YOUR_PROJECT_ID}/cloud-run-source-deploy/redash:latest
+        name: redash-1
+        resources:
+          limits:
+            cpu: '1'
+            memory: '512Mi'
+      - name: cloud-sql-proxy
+        image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.15.1
+        args:
+        - --structured-logs
+        - --auto-iam-authn
+        - "{TARGET_DB_CONNECTION_NAME_1}?port=13306"
+        - "{TARGET_DB_CONNECTION_NAME_2}?port=23306"
+        resources:
+          limits:
+            cpu: '0.5'
+            memory: 512Mi
+      serviceAccountName: cloud-run-redash@{YOUR_PROJECT_ID}.iam.gserviceaccount.com
