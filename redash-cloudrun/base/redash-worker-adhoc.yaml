@@ -1,0 +1,50 @@
+apiVersion: run.googleapis.com/v1
+kind: WorkerPool
+metadata:
+  annotations:
+    run.googleapis.com/launch-stage: BETA
+    run.googleapis.com/manualInstanceCount: '1'
+    run.googleapis.com/scalingMode: manual
+  labels:
+    cloud.googleapis.com/location: asia-northeast1
+  name: redash-worker-adhoc
+spec:
+  template:
+    metadata:
+      annotations:
+        run.googleapis.com/execution-environment: gen2
+        run.googleapis.com/network-interfaces: '[{"network":"default","subnetwork":"default"}]'
+        run.googleapis.com/vpc-access-egress: private-ranges-only
+    spec:
+      containerConcurrency: 0
+      containers:
+      - args:
+        - worker
+        env:
+        - name: QUEUES
+          value: queries
+        - name: WORKERS_COUNT
+          value: '2'
+        - name: REDASH_LOG_LEVEL
+          value: INFO
+        - name: REDASH_REDIS_URL
+          value: redis://{YOUR_REDIS_IP}:6379/0
+        - name: REDASH_HOST
+          value: https://redash-server-{YOUR_PROJECT_ID}.asia-northeast1.run.app
+        - name: REDASH_COOKIE_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: redash-cookie-secret
+        - name: REDASH_DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: redash-database-url
+        image: asia-northeast1-docker.pkg.dev/{YOUR_PROJECT_ID}/cloud-run-source-deploy/redash:latest
+        name: redash-1
+        resources:
+          limits:
+            cpu: '1'
+            memory: 2Gi
+      serviceAccountName: cloud-run-redash@{YOUR_PROJECT_ID}.iam.gserviceaccount.com
