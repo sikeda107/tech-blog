@@ -7,3 +7,5 @@ steps:
         echo "deploy job"
 substitutions:
   _PIPELINE: deploy
+options:
+  logging: CLOUD_LOGGING_ONLY
