@@ -1,0 +1,12 @@
+steps:
+  - name: gcr.io/cloud-builders/gcloud
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        echo "build job"
+        echo "_PIPELINE=${_PIPELINE}"
+substitutions:
+  _PIPELINE: build
+options:
+  pubsubTopic: projects/logical-craft-441308-v0/topics/build-status-topic

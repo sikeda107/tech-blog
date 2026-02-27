@@ -1,0 +1,9 @@
+steps:
+  - name: gcr.io/cloud-builders/gcloud
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        echo "deploy job"
+substitutions:
+  _PIPELINE: deploy
