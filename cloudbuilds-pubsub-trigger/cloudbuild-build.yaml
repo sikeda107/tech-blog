@@ -6,6 +6,11 @@ steps:
       - |
         echo "build job"
         echo "_PIPELINE=${_PIPELINE}"
+        for i in {10..1}; do
+          echo "build: remaining ${i}s"
+          sleep 1
+        done
+        echo "build: done"
 options:
   pubsubTopic: projects/logical-craft-441308-v0/topics/build-status-topic
   logging: CLOUD_LOGGING_ONLY

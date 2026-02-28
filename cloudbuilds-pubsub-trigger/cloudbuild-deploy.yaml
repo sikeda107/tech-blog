@@ -5,5 +5,10 @@ steps:
       - -ceu
       - |
         echo "deploy job"
+        for i in {10..1}; do
+          echo "deploy: remaining ${i}s"
+          sleep 1
+        done
+        echo "deploy: done"
 options:
   logging: CLOUD_LOGGING_ONLY
